@@ -33,11 +33,11 @@ try {
 		if(empty($id) === false) {
 			foreach($users as $user) {
 				if($user->userId === $id) {
-					//$reply->data = $user;
+					$reply->data = $user;
 					break;
 				}
 			}
-		} elseif(empty($postUserId) === false) {
+		} if(empty($postUserId) === false) {
 
 			foreach($users as $user) {
 				if($user->userId === $postUserId) {
@@ -62,12 +62,14 @@ try {
 					];
 				}
 			}
+		} else {
+			$reply->data = $users;
 		}
 	} elseif($method = "POST") {
 
 		$requestContent = file_get_contents("php://input");
 		$requestObject = json_decode($requestContent);
-		$users = json_decode(file_get_contents("users.json"));
+
 		if(empty($requestObject->name) === true) {
 			throw(new \InvalidArgumentException ("name was not provided ", 405));
 		}
