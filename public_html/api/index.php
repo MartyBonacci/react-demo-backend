@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__, 2) . "/php/lib/uuid.php";
+require_once dirname(__DIR__, 2) . "/php/lib/xsrf.php";
 require_once(dirname(__DIR__, 2) . "/vendor/autoload.php");
 //prepare an empty reply
 $reply = new stdClass();
@@ -20,6 +21,10 @@ try {
 	$id = filter_input(INPUT_GET, "id", FILTER_SANITIZE_STRING, FILTER_FLAG_NO_ENCODE_QUOTES);
 	$postUserId = filter_input(INPUT_GET, "postUserId", FILTER_SANITIZE_STRING, FILTER_FLAG_NO_ENCODE_QUOTES);
 
+	// verify the session, start if not active
+	if(session_status() !==PHP_SESSION_ACTIVE) {
+		session_start();
+	}
 	if($method === "GET") {
 		//set XSRF cookie
 		setXsrfCookie();
@@ -28,16 +33,16 @@ try {
 		if(empty($id) === false) {
 			foreach($users as $user) {
 				if($user->userId === $id) {
-					$reply->data = $user;
+					//$reply->data = $user;
 					break;
 				}
 			}
-		} elseif(empty($userPostId) === false) {
+		} elseif(empty($postUserId) === false) {
 
 			foreach($users as $user) {
 				if($user->userId === $postUserId) {
 
-					$postJson = @file_get_contents("post.json");
+					$postJson = @file_get_contents("posts.json");
 
 					if($postJson === false) {
 						throw(new RuntimeException("Unable to read diceware data", 500));
@@ -51,12 +56,10 @@ try {
 							$postArray[] = $post;
 						}
 					}
-					$reply->data = [
+					$reply->data = (object) [
 						"user" => $user,
 						"posts" => $postArray
 					];
-				} else {
-					$reply->data = [];
 				}
 			}
 		}
@@ -64,6 +67,7 @@ try {
 
 		$requestContent = file_get_contents("php://input");
 		$requestObject = json_decode($requestContent);
+		$users = json_decode(file_get_contents("users.json"));
 		if(empty($requestObject->name) === true) {
 			throw(new \InvalidArgumentException ("name was not provided ", 405));
 		}
@@ -88,6 +92,9 @@ try {
 		$requestObject-> userId = generateUuidV4();
 
 		$users[] = $requestObject;
+
+		file_put_contents("users.json", json_encode($users));
+		$reply->message = "User created successfully";
 
 	} else {
 		throw (new InvalidArgumentException("Invalid HTTP method request", 418));
