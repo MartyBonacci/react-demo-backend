@@ -1,6 +1,6 @@
 <?php
-require_once dirname(__DIR__, 2) . "/php/classes/JsonObjectStorage.php";
-
+require_once dirname(__DIR__, 2) . "/php/lib/uuid.php";
+require_once(dirname(__DIR__, 2) . "/vendor/autoload.php");
 //prepare an empty reply
 $reply = new stdClass();
 $reply->status = 200;
@@ -8,6 +8,12 @@ $reply->data = null;
 
 try {
 
+	$userJson = @file_get_contents("users.json");
+
+	if($userJson === false) {
+		throw(new RuntimeException("Unable to read diceware data", 500));
+	}
+	$users = json_decode($userJson);
 
 	$method = $_SERVER["HTTP_X_HTTP_METHOD"] ?? $_SERVER["REQUEST_METHOD"];
 
@@ -18,21 +24,15 @@ try {
 		//set XSRF cookie
 		setXsrfCookie();
 
-		$userJson = @file_get_contents("users.json");
-
-		if($userJson === false) {
-			throw(new RuntimeException("Unable to read diceware data", 500));
-		}
-		$users = json_decode($userJson);
 
 		if(empty($id) === false) {
 			foreach($users as $user) {
 				if($user->userId === $id) {
-					$reply->data =$user;
+					$reply->data = $user;
 					break;
 				}
 			}
-		} elseif (empty($userPostId) ===false) {
+		} elseif(empty($userPostId) === false) {
 
 			foreach($users as $user) {
 				if($user->userId === $postUserId) {
@@ -55,11 +55,40 @@ try {
 						"user" => $user,
 						"posts" => $postArray
 					];
-				} else{
+				} else {
 					$reply->data = [];
 				}
 			}
 		}
+	} elseif($method = "POST") {
+
+		$requestContent = file_get_contents("php://input");
+		$requestObject = json_decode($requestContent);
+		if(empty($requestObject->name) === true) {
+			throw(new \InvalidArgumentException ("name was not provided ", 405));
+		}
+
+		if(empty($requestObject->username) === true) {
+			throw(new \InvalidArgumentException ("name was not provided ", 405));
+		}
+
+		if(empty($requestObject->email) === true) {
+			throw(new \InvalidArgumentException ("email was not provided ", 405));
+		}
+
+		if(empty($requestObject->phone) === true) {
+			throw(new \InvalidArgumentException ("phone was not provided ", 405));
+		}
+
+		if(empty($requestObject->website) === true) {
+			throw(new \InvalidArgumentException ("website was not provided ", 405));
+		}
+		//name username email phone, website
+
+		$requestObject-> userId = generateUuidV4();
+
+		$users[] = $requestObject;
+
 	} else {
 		throw (new InvalidArgumentException("Invalid HTTP method request", 418));
 	}
